@@ -195,7 +195,7 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule {
         Log.d(TAG, "startCall number: " + number + ", callerName: " + callerName);
 
         Bundle extras = new Bundle();
-        Uri uri = Uri.fromParts(PhoneAccount.SCHEME_TEL, number, null);
+        Uri uri = Uri.fromParts(PhoneAccount.SCHEME_SIP, number, null);
 
         Bundle callExtras = new Bundle();
         callExtras.putString(EXTRA_CALLER_NAME, callerName);
@@ -576,6 +576,7 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule {
 
         PhoneAccount.Builder builder = new PhoneAccount.Builder(handle, appName)
                 .setCapabilities(PhoneAccount.CAPABILITY_CALL_PROVIDER);
+                .addSupportedUriScheme(PhoneAccount.SCHEME_SIP);
 
         if (_settings != null && _settings.hasKey("imageName")) {
             int identifier = appContext.getResources().getIdentifier(_settings.getString("imageName"), "drawable", appContext.getPackageName());
