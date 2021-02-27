@@ -42,7 +42,7 @@ public class RNCallKeepBackgroundMessagingService extends HeadlessJsTaskService 
       "RNCallKeepBackgroundMessage",
       Arguments.fromBundle(extras),
       60000,
-      false
+      true
     );
   }
 }
