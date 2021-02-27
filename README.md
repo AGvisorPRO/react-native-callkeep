@@ -1,3 +1,12 @@
+Note: This fork is meant to solve some issues in android. Once those are fixed
+upstream we should use that again.
+
+- Allow calling with emails instead of just phone numbers
+- [#310](https://github.com/react-native-webrtc/react-native-callkeep/pull/310)
+  Use our own UI instead of the phone's native one
+- Don't crash when sending background notifications while the app is in the foreground
+
+
 # React Native CallKeep
 
 [![npm version](https://badge.fury.io/js/react-native-callkeep.svg)](https://badge.fury.io/js/react-native-callkeep)
