@@ -34,6 +34,7 @@ import android.os.Handler;
 import android.speech.tts.Voice;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
+import android.telecom.PhoneAccount;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import android.telecom.CallAudioState;
 import android.telecom.Connection;
@@ -307,6 +308,12 @@ public class VoiceConnectionService extends ConnectionService {
         connection.setInitializing();
         connection.setExtras(extras);
         currentConnections.put(extras.getString(EXTRA_CALL_UUID), connection);
+
+        TelecomManager telecomManager = (TelecomManager) this.getApplicationContext().getSystemService(Context.TELECOM_SERVICE);
+        PhoneAccount phoneAccount = telecomManager.getPhoneAccount(request.getAccountHandle());
+        if ((phoneAccount.getCapabilities() & PhoneAccount.CAPABILITY_SELF_MANAGED) != 0) {
+            connection.setConnectionProperties(Connection.PROPERTY_SELF_MANAGED);
+        }
 
         // Get other connections for conferencing
         Map<String, VoiceConnection> otherConnections = new HashMap<>();
