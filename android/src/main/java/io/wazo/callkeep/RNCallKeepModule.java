@@ -109,11 +109,18 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule {
     private boolean isReceiverRegistered = false;
     private VoiceBroadcastReceiver voiceBroadcastReceiver;
     private ReadableMap _settings;
+    private boolean shouldSendEventsToJs = false;
 
     public RNCallKeepModule(ReactApplicationContext reactContext) {
         super(reactContext);
 
         this.reactContext = reactContext;
+    }
+
+    @Override
+    public void initialize() {
+        super.initialize();
+        this.shouldSendEventsToJs = true;
     }
 
     @Override
@@ -176,11 +183,13 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule {
     @ReactMethod
     public void answerIncomingCall(String uuid) {
         if (!isConnectionServiceAvailable() || !hasPhoneAccount()) {
+            Log.w(TAG, "Connection service is not available or user does not have a phone account");
             return;
         }
 
         Connection conn = VoiceConnectionService.getConnection(uuid);
         if (conn == null) {
+            Log.w(TAG, String.format("Connection with uuid %s not found", uuid));
             return;
         }
 
@@ -593,7 +602,9 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule {
     }
 
     private void sendEventToJS(String eventName, @Nullable WritableMap params) {
-        this.reactContext.getJSModule(RCTDeviceEventEmitter.class).emit(eventName, params);
+        if (this.shouldSendEventsToJs) {
+            this.reactContext.getJSModule(RCTDeviceEventEmitter.class).emit(eventName, params);
+        }
     }
 
     private String getApplicationName(Context appContext) {
