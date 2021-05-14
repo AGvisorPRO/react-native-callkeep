@@ -74,7 +74,9 @@ import static androidx.core.app.ActivityCompat.requestPermissions;
 import static io.wazo.callkeep.Constants.EXTRA_CALLER_NAME;
 import static io.wazo.callkeep.Constants.EXTRA_CALL_UUID;
 import static io.wazo.callkeep.Constants.EXTRA_CALL_NUMBER;
+import static io.wazo.callkeep.Constants.EXTRA_CALL_CUSTOM_EXTRA;
 import static io.wazo.callkeep.Constants.ACTION_END_CALL;
+import static io.wazo.callkeep.Constants.ACTION_SHOW_INCOMING_CALL;
 import static io.wazo.callkeep.Constants.ACTION_ANSWER_CALL;
 import static io.wazo.callkeep.Constants.ACTION_MUTE_CALL;
 import static io.wazo.callkeep.Constants.ACTION_UNMUTE_CALL;
@@ -108,11 +110,18 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule {
     private boolean isReceiverRegistered = false;
     private VoiceBroadcastReceiver voiceBroadcastReceiver;
     private ReadableMap _settings;
+    private boolean shouldSendEventsToJs = false;
 
     public RNCallKeepModule(ReactApplicationContext reactContext) {
         super(reactContext);
 
         this.reactContext = reactContext;
+    }
+
+    @Override
+    public void initialize() {
+        super.initialize();
+        this.shouldSendEventsToJs = true;
     }
 
     @Override
@@ -155,7 +164,7 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void displayIncomingCall(String uuid, String number, String callerName) {
+    public void displayIncomingCall(String uuid, String number, String callerName, String customExtra) {
         if (!isConnectionServiceAvailable() || !hasPhoneAccount()) {
             return;
         }
@@ -163,11 +172,15 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule {
         Log.d(TAG, "displayIncomingCall number: " + number + ", callerName: " + callerName);
 
         Bundle extras = new Bundle();
-        Uri uri = Uri.fromParts(PhoneAccount.SCHEME_TEL, number, null);
+        Uri uri = Uri.fromParts(PhoneAccount.SCHEME_SIP, number, null);
 
         extras.putParcelable(TelecomManager.EXTRA_INCOMING_CALL_ADDRESS, uri);
         extras.putString(EXTRA_CALLER_NAME, callerName);
         extras.putString(EXTRA_CALL_UUID, uuid);
+
+        if (customExtra != null) {
+            extras.putString(EXTRA_CALL_CUSTOM_EXTRA, customExtra);
+        }
 
         telecomManager.addNewIncomingCall(handle, extras);
     }
@@ -175,11 +188,13 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule {
     @ReactMethod
     public void answerIncomingCall(String uuid) {
         if (!isConnectionServiceAvailable() || !hasPhoneAccount()) {
+            Log.w(TAG, "Connection service is not available or user does not have a phone account");
             return;
         }
 
         Connection conn = VoiceConnectionService.getConnection(uuid);
         if (conn == null) {
+            Log.w(TAG, String.format("Connection with uuid %s not found", uuid));
             return;
         }
 
@@ -195,7 +210,7 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule {
         Log.d(TAG, "startCall number: " + number + ", callerName: " + callerName);
 
         Bundle extras = new Bundle();
-        Uri uri = Uri.fromParts(PhoneAccount.SCHEME_TEL, number, null);
+        Uri uri = Uri.fromParts(PhoneAccount.SCHEME_SIP, number, null);
 
         Bundle callExtras = new Bundle();
         callExtras.putString(EXTRA_CALLER_NAME, callerName);
@@ -575,7 +590,8 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule {
         String appName = this.getApplicationName(this.getAppContext());
 
         PhoneAccount.Builder builder = new PhoneAccount.Builder(handle, appName)
-                .setCapabilities(PhoneAccount.CAPABILITY_CALL_PROVIDER);
+                .setCapabilities(PhoneAccount.CAPABILITY_SELF_MANAGED)
+                .addSupportedUriScheme(PhoneAccount.SCHEME_SIP);
 
         if (_settings != null && _settings.hasKey("imageName")) {
             int identifier = appContext.getResources().getIdentifier(_settings.getString("imageName"), "drawable", appContext.getPackageName());
@@ -591,7 +607,9 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule {
     }
 
     private void sendEventToJS(String eventName, @Nullable WritableMap params) {
-        this.reactContext.getJSModule(RCTDeviceEventEmitter.class).emit(eventName, params);
+        if (this.shouldSendEventsToJs) {
+            this.reactContext.getJSModule(RCTDeviceEventEmitter.class).emit(eventName, params);
+        }
     }
 
     private String getApplicationName(Context appContext) {
@@ -628,6 +646,7 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule {
         if (!isReceiverRegistered) {
             IntentFilter intentFilter = new IntentFilter();
             intentFilter.addAction(ACTION_END_CALL);
+            intentFilter.addAction(ACTION_SHOW_INCOMING_CALL);
             intentFilter.addAction(ACTION_ANSWER_CALL);
             intentFilter.addAction(ACTION_MUTE_CALL);
             intentFilter.addAction(ACTION_UNMUTE_CALL);
@@ -669,6 +688,10 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule {
                 case ACTION_END_CALL:
                     args.putString("callUUID", attributeMap.get(EXTRA_CALL_UUID));
                     sendEventToJS("RNCallKeepPerformEndCallAction", args);
+                    break;
+                case ACTION_SHOW_INCOMING_CALL:
+                    args.putString("callUUID", attributeMap.get(EXTRA_CALL_UUID));
+                    sendEventToJS("RNCallKeepPerformShowIncomingCallAction", args);
                     break;
                 case ACTION_ANSWER_CALL:
                     args.putString("callUUID", attributeMap.get(EXTRA_CALL_UUID));
